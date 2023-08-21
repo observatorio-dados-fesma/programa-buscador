@@ -4,6 +4,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 
+from credentials import CPF, SENHA
+
 from json import dump, load
 from os import listdir, mkdir, rmdir, remove
 from pandas import DataFrame
@@ -13,12 +15,7 @@ from re import search, findall
 
 path = ''
 
-class Robo(object):
-
-	def __init__(self, cpf, senha):
-
-		self.cpf = cpf
-		self.senha = senha
+class Robo():
 
 	def numero(self, num):
 
@@ -69,7 +66,7 @@ class Robo(object):
 
 		user = driver.find_element(By.XPATH, '//*[(@id = "login")]')
 		
-		user.send_keys(self.cpf, Keys.TAB, self.senha)
+		user.send_keys(CPF, Keys.TAB, SENHA)
 		
 		sleep(1)
 		
@@ -139,7 +136,35 @@ class Robo(object):
 
 				datahora = search(r'Data/Hora Mov\n(.*?)\n', body).group(1)[-19:][0:10]
 	
-				data = {'processo': self.numero(num = i), 'ultima': localizacao2, 'data': datahora}
+				movs = driver.get(f'https://eprocessos.ma.gov.br/ged/cadastrar/processos/imprimirmovimentacoesprocesso.jsp?id={html[int(x):int(x) + 7]}')
+
+				body = driver.find_element(By.TAG_NAME, 'body')
+
+				body = body.text
+
+				# f = open('teste.txt', 'w')
+				# f.write(body)
+				# f.close()
+
+				abertura = search(r'AGUARDANDO AUTUAÇÃO (.*?) ', body).group(1)
+
+				try:
+
+					entrada_saf = findall('\d{2}\/\d{2}\/\d{4}', search(r'ASSESSORIA DE FINANCAS (.*?) \d{2}:', body).group(1))[0]
+
+				except:
+
+					entrada_saf = ''
+
+				try: 
+
+					entrada_exe = findall('\d{2}\/\d{2}\/\d{4}', search(r'SERVICO DE EXECUCAO ORCAMENTARIA (.*?) \d{2}:', body).group(1))[0]
+
+				except:
+
+					entrada_exe = ''
+
+				data = {'processo': self.numero(num = i), 'setor_atual': localizacao2, 'data_atual': datahora, 'data_abertura': abertura, 'entrada_saf': entrada_saf, 'entrada_exe': entrada_exe}
 		
 				self.base(data = data, nome = i)
 	
@@ -153,9 +178,15 @@ class Robo(object):
 				
 				localizacao2 = 'Não Localizado ou Número Incorreto / Não Encontrado'
 				
-				datahora = 'Não Localizado ou Número Incorreto / Não Encontrado'
+				datahora = ''
 
-				data = {'processo': self.numero(num = i), 'ultima': localizacao2, 'data': datahora}
+				abertura = ''
+
+				entrada_saf = ''
+
+				entrada_exe = ''
+
+				data = {'processo': self.numero(num = i), 'setor_atual': localizacao2, 'data_atual': datahora, 'data_abertura': abertura, 'entrada_saf': entrada_saf, 'entrada_exe': entrada_exe}
 
 				self.base(data = data, nome = i)
 			
@@ -208,3 +239,11 @@ class Robo(object):
 			data = file.read()
 
 		return data.split()
+
+if __name__ == '__main__':
+
+	robo = Robo()
+
+	x = robo.read_path('C:/Users/jersiton.matos/Documents/envs/epro/INSTRUMENTALIZAÇÃO.txt')
+
+	robo.buscar(lista = x)
